@@ -4,8 +4,6 @@
 
     CURE.exe [-b] {filename(s)}
     CURE.exe -h
-
-or
     PROGRAM | CURE.exe [-b]
 
 # Option
