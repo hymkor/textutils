@@ -13,9 +13,8 @@ var ansiStrip = regexp.MustCompile("\x1B[^a-zA-Z]*[A-Za-z]")
 var ansiOut = ansicolor.NewAnsiColorWriter(os.Stdout)
 
 var bold = false
-
-const screenWidth = 80
-const screenHeight = 24
+var screenWidth int
+var screenHeight int
 
 func cat1(r io.Reader) bool {
 	scanner := bufio.NewScanner(r)
@@ -46,6 +45,7 @@ func cat1(r io.Reader) bool {
 
 func main() {
 	count := 0
+	screenWidth, screenHeight = conio.GetScreenSize()
 	for _, arg1 := range os.Args[1:] {
 		if arg1 == "-b" {
 			bold = true
