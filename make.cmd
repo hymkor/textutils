@@ -6,9 +6,7 @@ if not "%1" == "" goto %1
     go build
     goto end
 :get
-    go get github.com/mattn/go-runewidth
-    go get github.com/shiena/ansicolor 
-    go get github.com/zetamatta/nyagos/conio
+    for %%I in (github.com/mattn/go-runewidth github.com/shiena/ansicolor github.com/zetamatta/nyagos/conio) do ( go get %%I & cd %GOPATH%\src\%%I & git pull origin master)
     goto end
 :fmt
     go fmt
