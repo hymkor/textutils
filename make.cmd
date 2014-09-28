@@ -14,4 +14,6 @@ if not "%1" == "" goto %1
 :clean
     if exist cure.exe del cure.exe
     goto end
+:snapshot
+    zip -9 cure-%DATE:/=%.zip readme.md cure.exe
 :end
