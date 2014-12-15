@@ -2,8 +2,8 @@ package main
 
 import (
 	"bufio"
-	"bytes"
 	"fmt"
+	"io"
 	"os"
 	"regexp"
 	"strings"
@@ -31,6 +31,8 @@ var keyword = map[string]string{
 
 var rxQuoteHide = regexp.MustCompile("\"[^\"]*\"")
 var rxWord = regexp.MustCompile("\\w+")
+var rxQuoteShow = regexp.MustCompile("\a")
+var empty = []byte{}
 
 func conv(fname string) error {
 	in, inErr := os.Open(fname)
@@ -44,43 +46,59 @@ func conv(fname string) error {
 		return outErr
 	}
 	isReplaced := false
-	for scanner := bufio.NewScanner(in); scanner.Scan(); {
-		text := rxQuoteHide.ReplaceAllStringFunc(
-			scanner.Text(),
-			func(str string) string {
-				var result bytes.Buffer
-				for _, ch := range str {
-					result.WriteRune('\a')
-					result.WriteRune(ch)
+	reader := bufio.NewReader(in)
+	var err error = nil
+	for {
+		var line []byte
+		line, err := reader.ReadBytes('\n')
+		if err != nil {
+			break
+		}
+		line = rxQuoteHide.ReplaceAllFunc(
+			line,
+			func(src []byte) []byte {
+				dst := make([]byte, 0, len(src)*2)
+				for _, ch := range src {
+					dst = append(dst, '\a', ch)
 				}
-				return result.String()
+				return dst
 			})
-		text = rxWord.ReplaceAllStringFunc(
-			text,
-			func(str string) string {
+		line = rxWord.ReplaceAllFunc(
+			line,
+			func(src []byte) []byte {
+				str := string(src)
 				if result, ok := keyword[strings.ToLower(str)]; ok {
 					if result != str {
 						isReplaced = true
 					}
-					return result
+					return []byte(result)
 				} else {
-					return str
+					return src
 				}
 			})
-		fmt.Fprintln(out, strings.Replace(text, "\a", "", -1))
+		line = rxQuoteShow.ReplaceAll(line, empty)
+		_, err = out.Write(line)
+		if err != nil {
+			break
+		}
 	}
 	in.Close()
 	out.Close()
-	if isReplaced {
-		bakfname := fname + "~"
-		os.Remove(bakfname)
-		os.Rename(fname, bakfname)
-		os.Rename(outFname, fname)
-		fmt.Println(fname)
+	if err == nil || err != io.EOF {
+		if isReplaced {
+			bakfname := fname + "~"
+			os.Remove(bakfname)
+			os.Rename(fname, bakfname)
+			os.Rename(outFname, fname)
+			fmt.Println(fname)
+		} else {
+			os.Remove(outFname)
+		}
+		return nil
 	} else {
 		os.Remove(outFname)
+		return err
 	}
-	return nil
 }
 
 func main() {
