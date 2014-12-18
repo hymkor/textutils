@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 )
@@ -90,10 +91,20 @@ func main() {
 		}
 		keyword[strings.ToLower(line)] = line
 	}
-	for _, fname := range os.Args[1:] {
-		if err := conv(fname); err != nil {
-			fmt.Fprintf(os.Stderr, "%s: %s\n", fname, err.Error())
+	for _, arg1 := range os.Args[1:] {
+		matches, matchErr := filepath.Glob(arg1)
+		if matchErr != nil {
+			fmt.Fprintf(os.Stderr, "%s: %s\n", arg1, matchErr.Error())
 			return
+		}
+		if matches == nil || len(matches) <= 0 {
+			matches = []string{arg1}
+		}
+		for _, fname := range matches {
+			if err := conv(fname); err != nil {
+				fmt.Fprintf(os.Stderr, "%s: %s\n", fname, err.Error())
+				return
+			}
 		}
 	}
 }
