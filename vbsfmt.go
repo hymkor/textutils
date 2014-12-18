@@ -9,26 +9,7 @@ import (
 	"strings"
 )
 
-var keyword = map[string]string{
-	"arguments":    "Arguments",
-	"count":        "Count",
-	"createobject": "CreateObject",
-	"dim":          "Dim",
-	"else":         "Else",
-	"end":          "End",
-	"explicit":     "Explicit",
-	"if":           "If",
-	"is":           "Is",
-	"item":         "Item",
-	"left":         "Left",
-	"nothing":      "Nothing",
-	"option":       "Option",
-	"right":        "Right",
-	"set":          "Set",
-	"then":         "Then",
-	"wscript":      "WScript",
-}
-
+var keyword = map[string]string{}
 var rxQuoteHide = regexp.MustCompile("\"[^\"]*\"")
 var rxWord = regexp.MustCompile("\\w+")
 var rxQuoteShow = regexp.MustCompile("\a")
@@ -102,6 +83,13 @@ func conv(fname string) error {
 }
 
 func main() {
+	for scanner := bufio.NewScanner(os.Stdin); scanner.Scan(); {
+		line := scanner.Text()
+		if strings.HasPrefix(line, "@") {
+			continue
+		}
+		keyword[strings.ToLower(line)] = line
+	}
 	for _, fname := range os.Args[1:] {
 		if err := conv(fname); err != nil {
 			fmt.Fprintf(os.Stderr, "%s: %s\n", fname, err.Error())
