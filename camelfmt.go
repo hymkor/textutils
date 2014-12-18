@@ -11,10 +11,19 @@ import (
 )
 
 var keyword = map[string]string{}
-var rxQuoteHide = regexp.MustCompile("\"[^\"]*\"")
+var rxDQuoteHide = regexp.MustCompile("\"[^\"]*\"")
+var rxSQuoteHide = regexp.MustCompile("'[^']*'")
 var rxWord = regexp.MustCompile("\\w+")
 var rxQuoteShow = regexp.MustCompile("\a")
 var empty = []byte{}
+
+func insertYenA(src []byte) []byte {
+	dst := make([]byte, 0, len(src)*2)
+	for _, ch := range src {
+		dst = append(dst, '\a', ch)
+	}
+	return dst
+}
 
 func conv(fname string) error {
 	in, inErr := os.Open(fname)
@@ -36,15 +45,8 @@ func conv(fname string) error {
 		if err != nil {
 			break
 		}
-		line = rxQuoteHide.ReplaceAllFunc(
-			line,
-			func(src []byte) []byte {
-				dst := make([]byte, 0, len(src)*2)
-				for _, ch := range src {
-					dst = append(dst, '\a', ch)
-				}
-				return dst
-			})
+		line = rxDQuoteHide.ReplaceAllFunc(line, insertYenA)
+		line = rxSQuoteHide.ReplaceAllFunc(line, insertYenA)
 		line = rxWord.ReplaceAllFunc(
 			line,
 			func(src []byte) []byte {
