@@ -23,7 +23,7 @@ func output(line []byte, bom bool) int {
 	return len(line)
 }
 
-func tail(reader io.Reader, count int64,bom bool) (int64, bool) {
+func tail(reader io.Reader, count int64, bom bool) (int64, bool) {
 	var fileSize int64 = 0
 	br := bufio.NewReader(reader)
 	tailbuf := make([][]byte, count, count)
@@ -50,7 +50,7 @@ func tail(reader io.Reader, count int64,bom bool) (int64, bool) {
 	}
 }
 
-func watch(lastFileName string,lastFileSize int64,lineCount int64,bom bool) error {
+func watch(lastFileName string, lastFileSize int64, lineCount int64, bom bool) error {
 	for {
 		time.Sleep(3)
 		stat, err := os.Stat(lastFileName)
@@ -81,7 +81,7 @@ func watch(lastFileName string,lastFileSize int64,lineCount int64,bom bool) erro
 			return seekErr
 		}
 		var sizePlus int64
-		sizePlus, bom = tail(reader,lineCount,bom)
+		sizePlus, bom = tail(reader, lineCount, bom)
 		lastFileSize += sizePlus
 		reader.Close()
 	}
@@ -110,13 +110,22 @@ func main() {
 				fmt.Fprintf(os.Stderr, "%s: %s\n", arg, readerErr)
 				continue
 			}
-			lastFileSize, bom = tail(reader, lineCount,bom)
+			lastFileSize, bom = tail(reader, lineCount, bom)
 			lastFileName = arg
 			reader.Close()
 		}
 	}
-	if tail_f {
-		if err := watch(lastFileName,lastFileSize,lineCount,bom) ; err != nil {
+	if lastFileName == "" {
+		if tail_f {
+			for {
+				_, bom = tail(os.Stdin, lineCount, bom)
+				time.Sleep(3)
+			}
+		} else {
+			tail(os.Stdin, lineCount, bom)
+		}
+	} else if tail_f {
+		if err := watch(lastFileName, lastFileSize, lineCount, bom); err != nil {
 			fmt.Fprintf(os.Stderr, "%s: %s(%T)\n",
 				lastFileName,
 				err.Error(),
