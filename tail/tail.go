@@ -1,14 +1,16 @@
 package main
 
-import "bufio"
-import "fmt"
-import "io"
-import "os"
-import "regexp"
-import "strconv"
-import "time"
+import (
+	"bufio"
+	"fmt"
+	"io"
+	"os"
+	"regexp"
+	"strconv"
+	"time"
 
-import "github.com/zetamatta/nyagos/Src/dos"
+	"github.com/zetamatta/nyagos/Src/dos"
+)
 
 func output(line []byte, bom bool) int {
 	var line1 string
@@ -21,12 +23,11 @@ func output(line []byte, bom bool) int {
 	return len(line)
 }
 
-func tail(reader io.Reader, count int) (int64, bool) {
+func tail(reader io.Reader, count int64,bom bool) (int64, bool) {
 	var fileSize int64 = 0
 	br := bufio.NewReader(reader)
 	tailbuf := make([][]byte, count, count)
-	i := 0
-	bom := false
+	var i int64 = 0
 	for {
 		line, err := br.ReadBytes('\n')
 		fileSize += int64(len(line))
@@ -49,10 +50,47 @@ func tail(reader io.Reader, count int) (int64, bool) {
 	}
 }
 
+func watch(lastFileName string,lastFileSize int64,lineCount int64,bom bool) error {
+	for {
+		time.Sleep(3)
+		stat, err := os.Stat(lastFileName)
+		if err != nil {
+			switch err.(type) {
+			default:
+				return err
+			case *os.PathError:
+				continue
+			}
+		}
+		newSize := stat.Size()
+		if newSize == lastFileSize {
+			continue
+		}
+		if newSize < lastFileSize {
+			fmt.Fprintf(os.Stderr, "%s was truncated.\n", lastFileName)
+			lastFileSize = newSize
+			continue
+		}
+		reader, readerErr := os.Open(lastFileName)
+		if readerErr != nil {
+			return readerErr
+		}
+		_, seekErr := reader.Seek(lastFileSize, 0)
+		if seekErr != nil {
+			reader.Close()
+			return seekErr
+		}
+		var sizePlus int64
+		sizePlus, bom = tail(reader,lineCount,bom)
+		lastFileSize += sizePlus
+		reader.Close()
+	}
+}
+
 func main() {
 	rxCounter := regexp.MustCompile("^-(\\d+)")
 	tail_f := false
-	linecount := 10
+	var lineCount int64 = 10
 	var lastFileName string
 	var lastFileSize int64
 	bom := false
@@ -63,7 +101,7 @@ func main() {
 				fmt.Fprintf(os.Stderr, "%s: %s\n", arg, countErr)
 				return
 			}
-			linecount = count1
+			lineCount = int64(count1)
 		} else if arg == "-f" {
 			tail_f = true
 		} else {
@@ -72,61 +110,17 @@ func main() {
 				fmt.Fprintf(os.Stderr, "%s: %s\n", arg, readerErr)
 				continue
 			}
-			lastFileSize, bom = tail(reader, linecount)
+			lastFileSize, bom = tail(reader, lineCount,bom)
 			lastFileName = arg
 			reader.Close()
 		}
 	}
 	if tail_f {
-		for {
-			time.Sleep(3)
-			stat, err := os.Stat(lastFileName)
-			if err != nil {
-				switch err.(type) {
-				default:
-					fmt.Fprintf(os.Stderr, "%s: %s(%T)\n",
-						lastFileName,
-						err.Error(),
-						err)
-					return
-				case *os.PathError:
-					continue
-				}
-			}
-			newSize := stat.Size()
-			if newSize == lastFileSize {
-				continue
-			}
-			if newSize < lastFileSize {
-				fmt.Fprintf(os.Stderr, "%s was truncated.\n", lastFileName)
-				lastFileSize = newSize
-				continue
-			}
-			reader, readerErr := os.Open(lastFileName)
-			if readerErr != nil {
-				fmt.Fprintf(os.Stderr, "%s: %s(%T)\n",
-					lastFileName,
-					readerErr.Error(),
-					readerErr)
-				return
-			}
-			_, seekErr := reader.Seek(lastFileSize, 0)
-			if seekErr != nil {
-				fmt.Fprintf(os.Stderr, "%s: Seek error: %s\n",
-					lastFileName,
-					seekErr.Error())
-				reader.Close()
-				return
-			}
-			br := bufio.NewReader(reader)
-			for {
-				line, err := br.ReadBytes('\n')
-				if err != nil {
-					break
-				}
-				lastFileSize += int64(output(line, bom))
-			}
-			reader.Close()
+		if err := watch(lastFileName,lastFileSize,lineCount,bom) ; err != nil {
+			fmt.Fprintf(os.Stderr, "%s: %s(%T)\n",
+				lastFileName,
+				err.Error(),
+				err)
 		}
 	}
 }
