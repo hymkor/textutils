@@ -5,7 +5,5 @@ Text Utilities
    * Remove ANSI Esacape sequences from textfile.
 * hexdump
    * Print hexdecimal dump of binary file.
-* [cure](./cure/readme.mkd)
-   * Color-Unicoded moRE.exe
 * [camelfmt](./camelfmt/readme.mkd)
    * Correct wordcase for VBScript,PowerShell and so on.
